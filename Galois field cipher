@@ -1,0 +1,242 @@
+import numpy as np
+
+num2let = {0:'a',1:'b',2:'c',3:'d',4:'e',5:'f',6:'g',7:'h',8:'i',9:'j',10:'k',11:'l',12:'m',13:'n',14:'o',
+15:'p',16:'q',17:'r',18:'s',19:'t',20:'u',21:'v',22:'w',23:'x',24:'y',25:'z',26:' ',27:'.',28:',',29:';'}
+
+let2num = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7,'i':8,'j':9,'k':10,'l':11,'m':12,'n':13,'o':14,
+'p':15,'q':16,'r':17,'s':18,'t':19,'u':20,'v':21,'w':22,'x':23,'y':24,'z':25,' ':26,'.':27,',':28,';':29}
+
+dictionary = {0: 'x⁰', 1: 'x¹',2:'x²', 3:'x³',4: 'x⁴', 5:'x⁵',6:'x⁶',7:'x⁷',8:'x⁸',9:'x⁹',10:'x¹⁰'}
+
+#Data for testing: 
+gx_coe= [1,1]
+fx = [1,1,2,3]
+f1 = [2,3,5]
+#Sentence is used for affine Galois cipher
+sen = 'chris and kylie scamble and climb to see santa crunching on christmas cookies' 
+#NOTE!!
+
+##1: 
+#a:
+def poly_print(coe):
+    poly = ''
+    for i in range(len(coe)):
+        poly= poly + str(coe[i]) + dictionary[i] + '+'
+    return poly[:-1]
+
+#b:
+def poly_mod(coe,n):
+    new_coe = [i%n for i in coe]
+    return new_coe
+
+#c: Sum of two polynomials 
+def poly_sum(coe1, coe2,n):
+    p_sum = []
+    if len(coe1) > len(coe2):
+        coe2 = coe2 + [0 for i in range(len(coe1)-len(coe2))]
+    elif len(coe2) > len(coe1):
+        coe1 = coe1 + [0 for i in range(len(coe2)-len(coe1))]
+    for i in range(len(coe2)):
+        p_sum.append( coe1[i] + coe2[i])
+    if n == 0:    
+        return p_sum
+    else: 
+        return poly_mod(p_sum,n)
+
+#d: Product of two polynomials 
+def poly_prod(coe1,coe2,n):
+    deg_prod = len(coe1) + len (coe2) - 1  
+    prod = [0 for i in range(deg_prod)]
+    for i in range(len(coe1)):
+        for j in range(len(coe2)):
+            prod[i+j] += (coe1[i] * coe2[j]) 
+    if n == 0: 
+        return prod
+    else:
+        return poly_mod(prod,n)
+    
+#Find the remainder by f(x)/g(x), and it will be a representative for f(x)
+#n is the modular parameter that will be used in mod n.
+def rev_zeros(f0):
+    # This is used to remove 0 at the end of list for finding the representative of f(x)
+    # [a,b,c,0] cannot be used in sum and product functions because we should multiply g(x) by a polynomial
+    while f0:
+        if f0[-1] != 0: 
+            break
+        else: 
+            del f0[-1]
+    return f0
+
+def re_poly(fx,gx,n):
+    num = len(fx)-len(gx)
+    if len(gx) < len(fx):
+        gx = [0 for i in range(num)] + gx
+    # Multiply the cofficient of largest degree of g(x) by that of f(x)
+    if gx[-1] != fx[-1]:
+        gx = poly_prod(gx,[fx[-1]],n)
+    # Multiply g(x) by [-1] to find the additive inverse of g(x)
+    gx = poly_prod(gx,[-1],n)
+    coe = poly_prod(gx,[-1],n)[-1]
+    # Function will be used to sum f(x) and the additive inverse of g(x)
+    sb = poly_sum(fx,gx,n)
+    return rev_zeros(sb),coe
+
+#Function is used for finding the remainder of f(x)/g(x) through many loops 
+def representive_poly(fx,gx,n):
+    deg_g = len(gx) - 1 
+    coe = [0 for i in range(len(fx)-1)]
+    while True:
+        index = len(fx)-len(gx)
+        fx,g = re_poly(fx,gx,n)
+        coe[index] += coe [index] + g
+        # The degree of f(x) which is the remainder now must be less than that of g(x)
+        # when it is statisfied, while loops will be break
+        deg_f = len(fx) -1 
+        if deg_f < deg_g:
+            break
+    return fx,coe
+
+def sum_prod(fx1,fx2,gx,n):
+    sum_poly = poly_sum(fx1,fx2,n)
+    f0 = representive_poly(sum_poly,gx,n)
+    return f0
+    
+def di_poly(fx1,fx2,gx,n):
+    prod_poly = poly_prod(fx1,fx2,n)
+    f0,g = representive_poly(prod_poly,gx,n)
+    return f0
+
+#c : Find both quotient and remainder based on the division algorithm.
+def quot_remain(fx,gx,n):
+    
+    remainder, quotient = representive_poly(fx,gx,n)
+
+    return quotient, remainder #rev_zeros(quotient), remainder
+
+#d: Multiplicative inverse for f(x):
+
+##2: Affine Galois cipher
+def word2list(sen):
+    sen = sen.lower()
+    new =[]
+    for i in sen: 
+    	new = new + [let2num[i]] 
+    return new 
+
+def list2word(list_num):
+    sen = ''
+    for i in list_num:
+        sen = sen + num2let[i]
+    return sen
+##5:
+## In G27, g(x) should have third degree polynomial
+##3: 
+#Convert number into ternary 
+def convert2ternary(num):
+    a = [0,0,0]
+    for i in range(3):
+        r = int(num % 3)
+        num = (num-r)/3
+        a[i] += r
+    return a
+
+def list2ternary(text):
+    text = word2list(text)
+    d = []
+    for i in text: 
+        d.append(convert2ternary(i))
+    return d
+
+#Convert the ternary back to decimal 
+def tern2integer(list):
+    numb =0
+    for i in range(3):
+        numb += (list[i])*(3**i)
+    return numb
+
+def pad_zeros(vec,goal):
+    new_vec = [i for i in vec]
+    for i in range(goal-len(vec)):
+        new_vec.append(0)
+    return new_vec
+
+def affine_GF27_cipher(text,coe_p,shift_coe):
+# NOTE: parameters: text is the sentence for encryption that will form a bunch of polynomials, 
+# coe_p is a coefficient polynomial that will multiply by each sentence-polynomial
+# shift_ coe is a shift coefficient polynomial that will shift the sentence
+
+    new_list = []
+    prod = []
+    n = 3
+    # g(x) is an inducible polynomial
+    gx= [3,1,0,1] 
+
+    #convert a string to list of numbers
+    tlist = list2ternary(text)
+
+    new_poly =[]
+    #Convert the list of sentence into ternary
+    for i in tlist:
+        prod.append(poly_sum(di_poly(i,coe_p,gx,3),shift_coe,n))
+    # Multiply polynomial of text by coef polynomial, and its product is reduced by g(x)
+    # Add new polynomial by shift_polynomial 
+    for i in prod:
+        # Add 0 to a list to full three numbers 
+        new_poly.append(pad_zeros(i,n))
+    
+    for i in new_poly:
+        # Convert ternary numbers to integers 
+        new_list.append(int(tern2integer(i)))
+    
+    return list2word(new_list) #Convert list of numbers to words
+
+def galois_matrix(xlist):
+    #xlist is a list of numbers
+    p = int(input('Choose your prime: '))
+    k = int(input('Choose your power k: '))
+    # k=1 will yield 2x2 matrix with p = 2 (GF2¹)
+    xlist = poly_mod(xlist,p)
+    # Elements in xlist will mod p
+
+    gmatrix1=[xlist[i:i+k+1] for i in range(0,len(xlist),k+1)]
+    # Split a list into a list of list with k elements - k degree
+    # split again to get 2x2 polynomial matrix
+    gmatrix2 = [gmatrix1[i:i+2] for i in range(0,len(gmatrix1),2)]
+    return gmatrix2
+
+def add_GF_mat(mat1,mat2):
+#NOTE: two matrices need to have the same size to add them together
+    sum_matrix = [[0 for index in range(len(mat1))] for i in range(len(mat1))]
+    for i in range(len(mat1)):
+        for j in range((len(mat2))):
+            sum_matrix[i][j] = mat1[i][j]+mat2[i][j]
+    return sum_matrix
+
+def add_GF_vecs(vec1,vec2):
+    #vec1 and vec2 are vectors 
+    sum_vec = [0 for index in range(len(vec1))]
+    for i in range(len(vec1)):
+        for j in range((len(vec2))):
+            sum_vec[i] = vec1[i]+vec2[j]
+    return sum_vec
+
+def GF_matmult(mat1,mat2):
+    return
+def GF_vecmult(mat,vec):
+    return 
+
+def bgalois_cipher(text,s_vec,gx,du_char): 
+    n=3
+    return 
+
+# Outcomes: 
+# print(poly_print([2,3,4,6,10]))
+# print(poly_mod([10,11,0]))
+# print(poly_sum(fx,gx_coe,0))
+# print(poly_prod(fx,gx_coe,0))
+# print(poly_sum([9,4,5,1],[5,7,2,2],3)) 
+# print('Representative for f(x): ' + poly_print(representive_poly(fx,gx_coe,0)))
+# print(New polynomial from the multiplication of f1(x) and f2(x): '+ poly_print(di_poly(fx,f1,gx_coe,3)))
+#print('Quotient for a division between f(x) and g(x): ' + poly_print(quot_remain(fx,gx_coe,0)[0]) + '\nAnd the remainder: ' + poly_print(quot_remain(fx,gx_coe,0)[1]))
+# print('New polynomial from the addition of f1(x) and f2(x): ' + poly_print(sum_prod(fx,f1,gx_coe)))
+#print('Old sentence: ' + sen + '\n' + 'New encrypted sentence: ' + affine_GF27_cipher(sen,[1,2,3,2],[2,3,5,6]))
